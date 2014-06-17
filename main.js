@@ -5,6 +5,12 @@ var ctx;
 var camera;
 var cube;
 
+var zNear = 1;
+var beta = 1;
+
+var keys = [];
+var last = -1;
+
 Object3D = function(pos, rot) {
   this.position = pos || Vector.Zero(3);
   this.rotation = rot || Vector.Zero(3);
@@ -54,36 +60,67 @@ document.addEventListener('DOMContentLoaded', function(event) {
   ctx = c.getContext('2d');
   camera = new Camera();
   cube = new Cube();
-  draw(ctx);
+
+  tick(ctx);
+})
+
+function tick(timestamp) {
+  // console.log('tick');
+  if (last < 0) {
+    last = timestamp;
+    window.requestAnimationFrame(tick);
+    return;
+  }
+  var elapsed = timestamp - last;
+  last = timestamp;
+  if (elapsed) {
+    // console.log(elapsed);
+    update(elapsed);
+    draw(ctx);
+  }
+  window.requestAnimationFrame(tick);
+}
+
+document.addEventListener('keydown', function(event) {
+  keys[event.keyCode] = event;
 });
 
 document.addEventListener('keyup', function(event) {
+  delete keys[event.keyCode];
+});
+
+function update(elapsed) {
+  // console.log('update');
   var camVec = cameraDirectionUnitVector(camera);
-  if (event.keyCode == 38 || event.keyCode == 87) { // forward
+  var rotateVal = elapsed * 0.0001
+  var moveVal = elapsed * 0.0001
+  var strafeVal = elapsed * 0.001
+  if (keys[38] || keys[87]) { // forward
     for (var i = 0; i < cube.lines.length; i++) {
-      camera.position = camera.position.add(camVec.multiply(0.01));
+      camera.position = camera.position.add(camVec.multiply(moveVal));
     }
-  } else if (event.keyCode == 40 || event.keyCode == 83) { // backward
+  } if (keys[40] || keys[83]) { // backward
     for (var i = 0; i < cube.lines.length; i++) {
-      camera.position = camera.position.subtract(camVec.multiply(0.01));
+      camera.position = camera.position.subtract(camVec.multiply(moveVal));
     }
-  } else if (event.keyCode == 81) { // strafe left
-    camera.position = camera.position.add(camVec.rotate(-Math.PI/2, Line.Y).multiply(0.05));
-  } else if (event.keyCode == 69) { // strafe right
-    camera.position = camera.position.add(camVec.rotate(Math.PI/2, Line.Y).multiply(0.05));
-  } else if (event.keyCode == 39 || event.keyCode == 68) { // pan right
+  } if (keys[65]) { // strafe left
+    camera.position = camera.position.add(camVec.rotate(-Math.PI/2, Line.Y).multiply(strafeVal));
+  } if (keys[68]) { // strafe right
+    camera.position = camera.position.add(camVec.rotate(Math.PI/2, Line.Y).multiply(strafeVal));
+  } if (keys[39] || keys[69]) { // pan right
     for (var i = 0; i < cube.lines.length; i++) {
-      camera.rotation.elements[1] += 0.01;
+      camera.rotation.elements[1] += moveVal;
     }
-  } else if (event.keyCode == 37 || event.keyCode == 65) { // pan left
+  } if (keys[37] || keys[81]) { // pan left
     for (var i = 0; i < cube.lines.length; i++) {
-      camera.rotation.elements[1] -= 0.01;
+      camera.rotation.elements[1] -= moveVal;
     }
   }
   draw(ctx);
-});
+}
 
 function draw(ctx) {
+  // console.log('draw');
   ctx.fillStyle = "rgba(255, 255, 255, 255)";
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
@@ -103,9 +140,6 @@ function drawLineSeg(ctx, line) {
 }
 
 function projectCameraPoint(point, camera) {
-  var zNear = 1;
-  var beta = 1;
-
   // 4D vector with x, y, z, 1 to make the matrix transforms easier.
   var workingVec = Vector.create([point.elements[0], point.elements[1], point.elements[2], 1]);
 
